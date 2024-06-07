@@ -2,7 +2,7 @@ train_params = {
     'model': {
         'architecture': 'rnn',
         'kwargs': {
-            'input_size': 3,
+            'input_size': 2,
             'output_size': 2,
             'core_kwargs': {
                 'num_layers': 1,
@@ -39,12 +39,12 @@ train_params = {
             'num_stimulus_strength': 6,
             'min_stimulus_strength': 0,
             'max_stimulus_strength': 2.5,
-            'block_side_probs': ((0.8, 0.2),
-                                 (0.2, 0.8)),
-            'trials_per_block_param': 1 / 50,
+            'block_side_probs': ((1.0, 0.0),
+                                 (0.0, 1.0)),
+            'trials_per_block_param': 1 / 10,
             'blocks_per_session': 4,
             'min_trials_per_block': 20,
-            'max_trials_per_block': 100,
+            'max_trials_per_block': 30,
             'max_obs_per_trial': 10,
             'rnn_steps_before_obs': 2,
             'time_delay_penalty': -0.05,

@@ -612,10 +612,23 @@ class RecurrentModel(nn.Module):
             prob_output: Tensor of shape (batch size, num steps, output dimension)
         """
 
+        # print(model_input['stimulus'])
+        #
+        # print(torch.tensor([torch.norm(model_input['stimulus'], p=2)]).squeeze(0))
+        # print(model_input['reward'].squeeze(1))
+
+        a = torch.max(model_input['stimulus']).unsqueeze(0) if torch.max(model_input['stimulus']) > 0 else torch.tensor([0.],
+                                                                                                           dtype=torch.double)
+        b = model_input['reward'].squeeze(1)
+
+        c = torch.max(model_input['stimulus']).unsqueeze(0)
+
         core_input = torch.cat(
-            [model_input['stimulus'],
-             torch.unsqueeze(model_input['reward'], dim=2)],  # TODO: check that this change didn't break anything
-            dim=2)
+            [torch.max(model_input['stimulus']).unsqueeze(0) if torch.max(model_input['stimulus']) > 0 else torch.tensor([0.],
+                                                                                                            dtype=torch.double),
+             model_input['reward'].squeeze(1)], dim=0).view(1, 1, -1)
+
+        # print(core_input)
 
         core_output, self.core_hidden = self.core(
             core_input,
