@@ -30,7 +30,7 @@ train_params = {
     },
     'run': {
         'start_grad_step': 0,
-        'num_grad_steps': 100001,
+        'num_grad_steps': 5001,
         'seed': 1,
     },
     'env': {

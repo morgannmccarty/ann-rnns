@@ -103,10 +103,11 @@ class IBLSession(gym.Env):
 
         step_output = dict(
             stimulus=stimulus.reshape((1, -1)),  # shape (1 rnn step, 2)
-            reward=torch.zeros(1).double().requires_grad_(True),
-            loss=torch.zeros(1).double().requires_grad_(True),
+            reward=torch.zeros(1).requires_grad_(True),
+            loss=torch.zeros(1).requires_grad_(True),
             info=None,
-            done=True if self.current_block_within_session == self.blocks_per_session else False)
+            done=True if self.current_block_within_session == self.blocks_per_session else False,
+            trial_index=self.current_trial_within_session,)
 
         return step_output
 
@@ -122,8 +123,14 @@ class IBLSession(gym.Env):
         :return:
         """
 
+
         left_action_prob = model_prob_output[0, 0].item()
         right_action_prob = model_prob_output[0, 1].item()
+
+        if self.current_trial_within_session == 0:
+            left_action_prob = 1 if model_prob_output[0, 0] > 0.5 else 0
+            right_action_prob = 1 if model_prob_output[0, 1] > 0.5 else 0
+
         correct_action = self.trial_sides[self.current_block_within_session][
             self.current_trial_within_block, self.current_rnn_step_within_trial]
         correct_action_index = (1 + correct_action) // 2
@@ -248,7 +255,8 @@ class IBLSession(gym.Env):
             stimulus=stimulus.reshape((1, -1)),
             reward=reward,
             info=info,
-            done=done)
+            done=done,
+            trial_index=self.current_trial_within_block,)
 
         return step_output
 
@@ -264,7 +272,7 @@ class IBLSession(gym.Env):
 
         def loss_fn(target, action_probs, is_blank_rnn_step):
             if is_blank_rnn_step:
-                loss = torch.zeros(1, dtype=torch.double, requires_grad=False)[0]
+                loss = torch.zeros(1, dtype=torch.float32, requires_grad=False)[0]
             else:
                 # TODO: adding time delay penalty is currently pointless
                 loss = base_loss_fn(target=target, input=action_probs)
@@ -284,18 +292,18 @@ class IBLSession(gym.Env):
             max_prob, max_prob_idx = torch.max(input, dim=1)
 
             if is_blank_rnn_step:
-                reward = torch.zeros(1).double()
+                reward = torch.zeros(1, dtype=torch.float32)
             elif max_prob > 0.9:
                 # for an action to be rewarded, the model must have made the correct choice
                 # also, punish model if action was incorrect
-                reward = 2. * (target == max_prob_idx).double() - 1.
+                reward = 2. * (target == max_prob_idx) - 1.
             elif is_timeout:
                 # punish model for timing out
-                reward = torch.zeros(1).fill_(-1).double()
+                reward = torch.zeros(1, dtype=torch.float32).fill_(-1)
             else:
                 # give 0
-                # reward = torch.zeros(1).double()
-                reward = torch.zeros(1).fill_(self.time_delay_penalty).double()
+                # reward = torch.zeros(1)
+                reward = torch.zeros(1, dtype=torch.float32).fill_(self.time_delay_penalty)
 
             return reward
 

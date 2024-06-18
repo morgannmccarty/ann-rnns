@@ -2,6 +2,8 @@ import numpy as np
 
 from utils.analysis import compute_eigenvalues
 import utils.run
+import logging
+import time
 
 
 def train():
@@ -34,6 +36,8 @@ def train_model(model,
     run_envs_output = {}
     start = params['run']['start_grad_step']
     stop = start + params['run']['num_grad_steps']
+
+    time_0 = time.time()
 
     for grad_step in range(start, stop):
         if hasattr(model, 'apply_connectivity_masks'):
@@ -77,6 +81,9 @@ def train_model(model,
 
             for hook_fn in fn_hook_dict[grad_step]:
                 hook_fn(hook_input)
+
+    logging.info(f'Total time elapsed for training: {time.time() - time_0} seconds')  # Calculate total time elapsed for the session
+
 
     train_model_output = dict(
         grad_step=grad_step,

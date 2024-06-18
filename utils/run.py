@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 import json
 import logging
@@ -243,8 +244,10 @@ def run_envs(model,
              envs,
              log_results=True):
 
-    total_reward = torch.zeros(1, dtype=torch.double, requires_grad=True)
-    total_loss = torch.zeros(1, dtype=torch.double, requires_grad=True)
+    time_0 = time.time()
+
+    total_reward = torch.zeros(1, dtype=torch.float32, requires_grad=True)
+    total_loss = torch.zeros(1, dtype=torch.float32, requires_grad=True)
     if hasattr(model, 'reset_core_hidden'):
         model.reset_core_hidden()  # reset core's hidden state
     step_output = envs.reset()
@@ -253,6 +256,12 @@ def run_envs(model,
     while not np.any(step_output['done']):
         total_reward = total_reward + torch.sum(step_output['reward'])  # cannot use +=
         total_loss = total_loss + torch.sum(step_output['loss'])
+
+        # Retrieve block_index from each environment's session_data
+        # trial_indices = [env.session_data['trial_index'].iloc[-1] for env in envs]
+
+        # Add block_index to step_output
+        # step_output['trial_index'] = trial_indices
 
         model_output = model(step_output)
 
@@ -308,6 +317,8 @@ def run_envs(model,
 
         logging.info(f'Average steps per trial: '
                      f'{dts_by_trial}')
+
+        logging.info(f'Time elapsed: {time.time() - time_0} seconds')
 
     run_envs_output = dict(
         session_data=session_data,

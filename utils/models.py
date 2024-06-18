@@ -36,10 +36,12 @@ class BayesianActor(object):
 
         self.curr_stim_posterior = np.full(
             shape=(num_sessions, 1, 2),
-            fill_value=0.5)
+            fill_value=0.5,
+            dtype=np.float32)
         self.curr_block_posterior = np.full(
             shape=(num_sessions, 1, 2),
-            fill_value=0.5)
+            fill_value=0.5,
+            dtype=np.float32)
 
         mu = np.sort(np.concatenate(
             [np.array(possible_trial_strengths[1:]),
@@ -239,11 +241,13 @@ class ExponentialWeightedActor(object):
         self.decay = decay
         self.exp_decaying_stimulus_prior = np.full(
             shape=(num_sessions, 1, 2),
-            fill_value=0.5)
+            fill_value=0.5,
+            dtype=np.float32)
 
         self.curr_stim_posterior = np.full(
             shape=(num_sessions, 1, 2),
-            fill_value=0.5)
+            fill_value=0.5,
+            dtype=np.float32)
 
         mu = np.sort(np.concatenate(
             [np.array(possible_trial_strengths[1:]),
@@ -450,7 +454,6 @@ class RecurrentModel(nn.Module):
 
         # converts all weights into doubles i.e. float64
         # this prevents PyTorch from breaking when multiplying float32 * float64
-        self.double()
 
         # TODO figure out why writing the model to tensorboard doesn't work
         # dummy_input = torch.zeros(size=(10, 1, 1), dtype=torch.double)
@@ -592,7 +595,7 @@ class RecurrentModel(nn.Module):
         else:
             raise ValueError(f'Unrecognized mask type str: {mask_type_str}')
 
-        connectivity_mask = torch.from_numpy(connectivity_mask).double()
+        connectivity_mask = torch.from_numpy(connectivity_mask)
         return connectivity_mask
 
     def forward(self, model_input):
@@ -618,15 +621,18 @@ class RecurrentModel(nn.Module):
         # print(model_input['reward'].squeeze(1))
 
         a = torch.max(model_input['stimulus']).unsqueeze(0) if torch.max(model_input['stimulus']) > 0 else torch.tensor([0.],
-                                                                                                           dtype=torch.double)
+                                                                                                           dtype=torch.float32)
         b = model_input['reward'].squeeze(1)
 
-        c = torch.max(model_input['stimulus']).unsqueeze(0)
+        c = torch.max(model_input['stimulus']).float().unsqueeze(0)
+
+        model_input['reward'] = model_input['reward'].float()
 
         core_input = torch.cat(
-            [torch.max(model_input['stimulus']).unsqueeze(0) if torch.max(model_input['stimulus']) > 0 else torch.tensor([0.],
-                                                                                                            dtype=torch.double),
+            [torch.max(model_input['stimulus']).float().unsqueeze(0) if torch.max(model_input['stimulus']) > 0 else torch.tensor([0.],
+                                                                                                            dtype=torch.float32),
              model_input['reward'].squeeze(1)], dim=0).view(1, 1, -1)
+
 
         # print(core_input)
 
@@ -650,6 +656,12 @@ class RecurrentModel(nn.Module):
 
         # shape: (batch size, 1, output dim e.g. 1)
         prob_output = self.prob_fn(linear_output)
+
+        # if model_input["trial_index"][0] == 0:
+        #     if torch.argmax(prob_output, dim=2) == 0:
+        #         prob_output = torch.tensor([[[1., 0.]]]).requires_grad_()
+        #     else:
+        #         prob_output = torch.tensor([[[0., 1.]]])
 
         # if probability function is sigmoid, add 1 - output to get 2D distribution
         if self.output_size == 1:
